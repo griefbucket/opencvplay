@@ -1,3 +1,7 @@
+/* This is a raw tutorial file pulled from
+ * http://nashruddin.com/display-video-from-webcam-with-opencv.html
+ */
+
 #include <stdio.h>
 #include "cv.h"
 #include "highgui.h"
