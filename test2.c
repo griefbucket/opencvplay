@@ -8,6 +8,7 @@ int main(int argc, char **argv) {
 		*prevFrame = 0
 		, *thisFrame = 0
 		, *deltaFrame = 0
+		, *rebuiltFrame = 0
 		;
 
 	int key = 0;
@@ -17,7 +18,7 @@ int main(int argc, char **argv) {
  
     /* always check */
     if (!capture) {
-        fprintf( stderr, "Cannot open initialize webcam!\n" );
+        fprintf(stderr, "Cannot open initialize webcam!\n");
         return 1;
     }
  
@@ -27,36 +28,13 @@ int main(int argc, char **argv) {
 	thisFrame = cvQueryFrame(capture);
 	prevFrame = cvCloneImage(thisFrame);
 	deltaFrame = cvCloneImage(thisFrame);
+	rebuiltFrame = cvCloneImage(thisFrame);
 
-	switch (thisFrame->depth) {
-		case IPL_DEPTH_8U:
-			printf("8U\n");
-			break;
+	int *allDeltaData = (int*)calloc(sizeof(int), thisFrame->imageSize);
 
-		case IPL_DEPTH_8S:
-			printf("8S\n");
-			break;
-
-		case IPL_DEPTH_16U:
-			printf("16U\n");
-			break;
-
-		case IPL_DEPTH_16S:
-			printf("16S\n");
-			break;
-
-		case IPL_DEPTH_32S:
-			printf("32S\n");
-			break;
-
-		case IPL_DEPTH_32F:
-			printf("32F\n");
-			break;
-
-		case IPL_DEPTH_64F:
-			printf("64F\n");
-			break;
-
+	if (thisFrame->depth != IPL_DEPTH_8U) {
+		fprintf(stderr, "Unsupported frame format");
+		return 1;
 	}
  
     while (key != 'q') {
@@ -71,8 +49,36 @@ int main(int argc, char **argv) {
 			break;
 		}
 
+		unsigned char 
+			*thisData = (unsigned char*) thisFrame->imageData
+			, *prevData = (unsigned char*) prevFrame->imageData
+			, *rebuiltData = (unsigned char*) rebuiltFrame->imageData
+			, *deltaData = (unsigned char*) deltaFrame->imageData
+			;
+
+		/* Compute the exact deltas */
 		for (int i = 0; i < thisFrame->imageSize; ++i) {
-			deltaFrame->imageData[i] = thisFrame->imageData[i] - prevFrame->imageData[i] + 128;
+			int val = (int)thisData[i] - (int)prevData[i];
+			allDeltaData[i] += (unsigned char)val;
+		}
+
+		/* Then write the actual deltas */
+		for (int i = 0; i < thisFrame->imageSize; ++i) {
+			int val = allDeltaData[i];
+
+			if (val > 0) {
+				unsigned char f = val > 127 ? 127 : val;
+				deltaData[i] = f;
+				allDeltaData[i] -= f;
+			}
+			else if (val < 0) {
+				unsigned char f = val < -127 ? -127 : val;
+				deltaData[i] = f + 255;
+				allDeltaData[i] -= f;
+			}
+			else {
+				deltaData[i] = 127;
+			}
 		}
        
         /* display current frame */
