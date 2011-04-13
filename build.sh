@@ -1,2 +1,2 @@
 #!/bin/sh
-g++ -I/opt/local/include/opencv -I/opt/local/include `pkg-config opencv --libs` $1
+g++ -I/opt/local/include/opencv -I/opt/local/include `pkg-config opencv zlib --libs` $1

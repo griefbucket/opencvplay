@@ -1,9 +1,38 @@
 #include <stdio.h>
 #include <unistd.h>
+
+#include <zlib.h>
+
 #include "cv.h"
 #include "highgui.h"
 
 #define DELTA_ACC_THRESHOLD 10
+
+unsigned int def(unsigned char *in, size_t inLen) {
+	size_t CHUNK = 4096;
+	unsigned char out[4096];
+	unsigned int written = 0;
+	z_stream strm;
+
+	strm.zalloc = Z_NULL;
+	strm.zfree = Z_NULL;
+	strm.opaque = Z_NULL;
+
+	deflateInit(&strm, 6);
+
+	strm.avail_in = inLen;
+	strm.next_in = in;
+
+	do {
+		strm.avail_out = CHUNK;
+		strm.next_out = out;
+		deflate(&strm, Z_FINISH);
+		written += CHUNK - strm.avail_out;
+	}
+	while (strm.avail_out == 0);
+
+	return written;
+}
  
 int main(int argc, char **argv) {
     CvCapture *capture = 0;
@@ -111,6 +140,10 @@ int main(int argc, char **argv) {
         key = cvWaitKey(1);
 
 		cvCopy(thisFrame, prevFrame);
+
+		/* encode the thing hur hur */
+		unsigned int size = def((unsigned char*)deltaFrame->imageData, deltaFrame->imageSize);
+		fprintf(stderr, "%d\n", size);
     }
  
     /* free memory */
