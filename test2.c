@@ -2,6 +2,8 @@
 #include <unistd.h>
 #include "cv.h"
 #include "highgui.h"
+
+#define DELTA_ACC_THRESHOLD 10
  
 int main(int argc, char **argv) {
     CvCapture *capture = 0;
@@ -77,12 +79,12 @@ int main(int argc, char **argv) {
 		for (int i = 0; i < thisFrame->imageSize; ++i) {
 			int val = allDeltaData[i];
 
-			if (val > 0) {
+			if (val > DELTA_ACC_THRESHOLD) {
 				int f = val < 127 ? val : 127;
 				deltaData[i] = 127 - (unsigned char)f;
 				allDeltaData[i] -= f;
 			}
-			else if (val < 0) {
+			else if (val < -DELTA_ACC_THRESHOLD) {
 				int f = val > -127 ? val : -127;
 				deltaData[i] = 127 - (unsigned char)f;
 				allDeltaData[i] -= f;
