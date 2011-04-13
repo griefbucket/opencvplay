@@ -6,9 +6,9 @@
 #include "cv.h"
 #include "highgui.h"
 
-#define DELTA_ACC_THRESHOLD 10
+#define DELTA_ACC_THRESHOLD 15
 
-unsigned int def(unsigned char *in, size_t inLen) {
+unsigned int def(char *in, size_t inLen) {
 	size_t CHUNK = 4096;
 	unsigned char out[4096];
 	unsigned int written = 0;
@@ -21,7 +21,7 @@ unsigned int def(unsigned char *in, size_t inLen) {
 	deflateInit(&strm, 6);
 
 	strm.avail_in = inLen;
-	strm.next_in = in;
+	strm.next_in = (unsigned char*)in;
 
 	do {
 		strm.avail_out = CHUNK;
@@ -32,6 +32,26 @@ unsigned int def(unsigned char *in, size_t inLen) {
 	while (strm.avail_out == 0);
 
 	return written;
+}
+
+unsigned int def_rle(char *in, size_t inLen) {
+	unsigned char curr = in[0];
+	int count = 0;
+
+	int size = 16 + 5;
+
+	for (int i = 0; i < inLen; ++i) {
+		if (in[i] == curr) {
+			count++;
+		}
+		else {
+			curr = in[i];
+			size += 5;
+			count = 1;
+		}
+	}
+
+	return size;
 }
  
 int main(int argc, char **argv) {
@@ -142,8 +162,13 @@ int main(int argc, char **argv) {
 		cvCopy(thisFrame, prevFrame);
 
 		/* encode the thing hur hur */
-		unsigned int size = def((unsigned char*)deltaFrame->imageData, deltaFrame->imageSize);
-		fprintf(stderr, "%d\n", size);
+		unsigned int 
+			sizeZlib = def(deltaFrame->imageData, deltaFrame->imageSize)
+			, sizeRLE = def_rle(deltaFrame->imageData, deltaFrame->imageSize)
+			;
+
+
+		fprintf(stderr, "%d\t%d\n", sizeZlib, sizeRLE);
     }
  
     /* free memory */
