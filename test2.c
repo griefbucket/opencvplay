@@ -1,4 +1,5 @@
 #include <stdio.h>
+#include <unistd.h>
 #include "cv.h"
 #include "highgui.h"
  
@@ -36,6 +37,17 @@ int main(int argc, char **argv) {
 		fprintf(stderr, "Unsupported frame format");
 		return 1;
 	}
+
+	if (thisFrame->dataOrder != IPL_DATA_ORDER_PIXEL) {
+		fprintf(stderr, "Must use IPL_DATA_ORDER_PIXEL");
+		return 1;
+	}
+
+	/* Zero out the rebuilt data! */
+	for (int i = 0; i < rebuiltFrame->imageSize; ++i) {
+		rebuiltFrame->imageData[i] = 0;
+		prevFrame->imageData[i] = 0;
+	}
  
     while (key != 'q') {
         /* get a frame */
@@ -58,8 +70,7 @@ int main(int argc, char **argv) {
 
 		/* Compute the exact deltas */
 		for (int i = 0; i < thisFrame->imageSize; ++i) {
-			int val = (int)thisData[i] - (int)prevData[i];
-			allDeltaData[i] += (unsigned char)val;
+			allDeltaData[i] += (int)thisData[i] - (int)prevData[i];
 		}
 
 		/* Then write the actual deltas */
@@ -67,22 +78,32 @@ int main(int argc, char **argv) {
 			int val = allDeltaData[i];
 
 			if (val > 0) {
-				unsigned char f = val > 127 ? 127 : val;
-				deltaData[i] = f;
+				int f = val < 127 ? val : 127;
+				deltaData[i] = 127 - (unsigned char)f;
 				allDeltaData[i] -= f;
 			}
 			else if (val < 0) {
-				unsigned char f = val < -127 ? -127 : val;
-				deltaData[i] = f + 255;
+				int f = val > -127 ? val : -127;
+				deltaData[i] = 127 - (unsigned char)f;
 				allDeltaData[i] -= f;
 			}
 			else {
 				deltaData[i] = 127;
 			}
 		}
+
+		/* And rebuild the image from the deltas */
+		for (int i = 0; i < thisFrame->imageSize; ++i) {
+			int val = (int)rebuiltData[i] + 127 - (int)deltaData[i];
+
+			if (val < 0) val = 0;
+			if (val > 255) val = 255;
+
+			rebuiltData[i] = (unsigned char)val;
+		}
        
         /* display current frame */
-        cvShowImage("result", deltaFrame);
+        cvShowImage("result", rebuiltFrame);
  
         /* exit if user press 'q' */
         key = cvWaitKey(1);
